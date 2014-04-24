@@ -18,6 +18,7 @@ const (
 )
 
 func initCmd() {
+	fmt.Printf("Creating project structure\n")
 	if err := os.Mkdir("deps", 0777); err != nil {
 		fatal("%s", err)
 	}
@@ -45,6 +46,7 @@ func initCmd() {
 	if err := download(phantom64URL, "deps/64bit/phantomjs"); err != nil {
 		fatal("%s", err)
 	}
+	fmt.Printf("Done\n")
 }
 
 func download(url string, dst string) error {
