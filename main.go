@@ -5,8 +5,10 @@ import (
 	"os"
 )
 
-var commands map[string]func()
-var usage map[string]string
+var (
+	commands = make(map[string]func(), 0)
+	usage    = make(map[string]string, 0)
+)
 
 func main() {
 	if len(os.Args) < 2 {
@@ -30,13 +32,7 @@ func help() {
 }
 
 func register(name string, function func(), use string) {
-	if commands == nil {
-		commands = make(map[string]func(), 0)
-	}
 	commands[name] = function
-	if usage == nil {
-		usage = make(map[string]string, 0)
-	}
 	usage[name] = use
 }
 
