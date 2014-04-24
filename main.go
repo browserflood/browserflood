@@ -12,7 +12,7 @@ func main() {
 	}
 	switch cmd := os.Args[1]; cmd {
 	case "init":
-		fmt.Printf("NOT DONE YET\n")
+		initCmd()
 	default:
 		fatal("Unknown command: %s", cmd)
 	}
