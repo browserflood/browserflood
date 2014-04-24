@@ -4,6 +4,10 @@ import (
 	"os"
 )
 
+func init() {
+	register("init", initCmd, "Initializes a browserflood project in the current directory.")
+}
+
 func initCmd() {
 	if err := os.Mkdir("deps", 0777); err != nil {
 		fatal("%s", err)

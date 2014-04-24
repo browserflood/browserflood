@@ -5,24 +5,39 @@ import (
 	"os"
 )
 
+var commands map[string]func()
+var usage map[string]string
+
 func main() {
 	if len(os.Args) < 2 {
-		usage()
+		help()
 		os.Exit(0)
 	}
-	switch cmd := os.Args[1]; cmd {
-	case "init":
-		initCmd()
-	default:
+	cmd, ok := commands[os.Args[1]]
+	if !ok {
 		fatal("Unknown command: %s", cmd)
 	}
+	cmd()
 }
 
-func usage() {
+func help() {
 	fmt.Printf("browserflood <command>\n")
 	fmt.Printf("\n")
 	fmt.Printf("commands:\n")
-	fmt.Printf("  init  Initializes a browserflood project in the current directory.\n")
+	for name, use := range usage {
+		fmt.Printf("  %s %s\n", name, use)
+	}
+}
+
+func register(name string, function func(), use string) {
+	if commands == nil {
+		commands = make(map[string]func(), 0)
+	}
+	commands[name] = function
+	if usage == nil {
+		usage = make(map[string]string, 0)
+	}
+	usage[name] = use
 }
 
 func fatal(reason string, args ...interface{}) {
