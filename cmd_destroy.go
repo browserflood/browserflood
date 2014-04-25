@@ -18,4 +18,5 @@ func destroyCmd() error {
 		return err
 	}
 	fmt.Printf("%#v", n)
+	return nil
 }

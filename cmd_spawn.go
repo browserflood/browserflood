@@ -28,6 +28,6 @@ func spawnCmd() error {
 			return err
 		}
 		fmt.Printf("%s", result)
-
 	}
+	return nil
 }

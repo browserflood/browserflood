@@ -8,7 +8,7 @@ func init() {
 	register("run", runCmd, "Runs a load test.")
 }
 
-func runCmd()error {
+func runCmd() error {
 	fmt.Printf("Run\n")
 	return nil
 }
