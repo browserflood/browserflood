@@ -35,13 +35,10 @@ func InitProject() error {
 	if err := os.Mkdir("deps/64bit", 0777); err != nil {
 		return err
 	}
-	if _, err := os.OpenFile("config.json", os.O_CREATE, 0x666); err != nil {
+	if _, err := os.OpenFile("provider.json", os.O_CREATE, 0666); err != nil {
 		return err
 	}
-	if _, err := os.OpenFile("hosts.json", os.O_CREATE, 0x666); err != nil {
-		return err
-	}
-	if _, err := os.OpenFile("deploy.bash", os.O_CREATE, 0x666); err != nil {
+	if _, err := os.OpenFile("hosts.json", os.O_CREATE, 0666); err != nil {
 		return err
 	}
 	fmt.Printf("Downloading phantomjs %s (32bit)\n", phantomVersion)
