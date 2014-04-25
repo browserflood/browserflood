@@ -9,5 +9,15 @@ func init() {
 }
 
 func deployCmd() {
-	fmt.Printf("Run\n")
+	hosts, err := LoadHosts()
+	if err != nil {
+		fatal("%s", err)
+	}
+	for _, host := range hosts {
+		deploy(host)
+	}
+}
+
+func deploy(host *Host) {
+	fmt.Printf("deploy to: %#v\n", host)
 }
