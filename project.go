@@ -40,12 +40,6 @@ type Config struct {
 	DeployPath string
 }
 
-func DefaultConfig() Config {
-	return Config{
-		DeployPath: "browserflood",
-	}
-}
-
 type Host struct {
 	Id   string
 	Addr string
