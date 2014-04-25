@@ -14,6 +14,7 @@ func init() {
 }
 
 func spawnCmd() error {
+	account := &identity.Account{}
 	s := c.Servers{account, "digitalocean"}
 	n := 1
 	for i := 0; i < n; i++ {

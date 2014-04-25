@@ -5,6 +5,7 @@ import (
 
 	c "github.com/gcloud/compute"
 	_ "github.com/gcloud/compute/providers/digitalocean"
+	"github.com/gcloud/identity"
 )
 
 func init() {
@@ -12,6 +13,7 @@ func init() {
 }
 
 func destroyCmd() error {
+	account := &identity.Account{}
 	s := c.Servers{account, "digitalocean"}
 	n, err := s.Destroy("1533067")
 	if err != nil {
