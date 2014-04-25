@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	commands = make(map[string]func(), 0)
+	commands = make(map[string]func() error, 0)
 	usage    = make(map[string]string, 0)
 )
 
@@ -19,7 +19,9 @@ func main() {
 	if !ok {
 		fatal("Unknown command: %s", cmd)
 	}
-	cmd()
+	if err := cmd(); err != nil {
+		fatal("%s", err)
+	}
 }
 
 func help() {
@@ -31,7 +33,7 @@ func help() {
 	}
 }
 
-func register(name string, function func(), use string) {
+func register(name string, function func() error, use string) {
 	commands[name] = function
 	usage[name] = use
 }

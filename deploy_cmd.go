@@ -8,14 +8,15 @@ func init() {
 	register("deploy", deployCmd, "Deploys deps to all hosts.")
 }
 
-func deployCmd() {
-	hosts, err := LoadHosts()
+func deployCmd() error {
+	project, err := LoadProject()
 	if err != nil {
-		fatal("%s", err)
+		return err
 	}
-	for _, host := range hosts {
+	for _, host := range project.Hosts {
 		deploy(host)
 	}
+	return nil
 }
 
 func deploy(host *Host) {
