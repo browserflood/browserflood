@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 )
 
 func init() {
@@ -13,12 +15,23 @@ func deployCmd() error {
 	if err != nil {
 		return err
 	}
+	results := make(chan error, len(project.Hosts))
 	for _, host := range project.Hosts {
-		deploy(host)
+		go func() {
+			results <- deploy(project.Config, host)
+		}()
+	}
+	for _ = range project.Hosts {
+		if err := <-results; err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func deploy(host *Host) {
-	fmt.Printf("deploy to: %#v\n", host)
+func deploy(config Config, host *Host) error {
+	dst := fmt.Sprintf("%s@%s:%s", host.User, host.Addr, config.DeployPath)
+	rsync := exec.Command("rsync", "-e", "ssh", "-rz", "dist/", dst)
+	rsync.Stderr = os.Stderr
+	return rsync.Run()
 }

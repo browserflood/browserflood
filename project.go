@@ -9,8 +9,7 @@ import (
 
 const (
 	phantomVersion = "1.9.7"
-	phantom32URL   = "https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-" + phantomVersion + "-linux-x86_64.tar.bz2"
-	phantom64URL   = "https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-" + phantomVersion + "-linux-i686.tar.bz2"
+	phantomURL     = "https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-" + phantomVersion + "-linux-i686.tar.bz2"
 )
 
 type Project struct {
@@ -48,10 +47,9 @@ func DefaultConfig() Config {
 }
 
 type Host struct {
-	Id       string
-	HostAddr string
-	SSHUser  string
-	SSHPort  string
+	Id   string
+	Addr string
+	User string
 }
 
 func NewProject() *Project {
@@ -71,16 +69,25 @@ func writeJSON(path string, data interface{}) error {
 	return e.Encode(data)
 }
 
-func LoadProject() (*Project, error) {
-	file, err := os.Open("hosts.json")
+func readJSON(path string, data interface{}) error {
+	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer file.Close()
 	d := json.NewDecoder(file)
+	return d.Decode(data)
+}
+
+func LoadProject() (*Project, error) {
 	p := &Project{}
-	err = d.Decode(&p.Hosts)
-	return p, err
+	if err := readJSON("hosts.json", &p.Hosts); err != nil {
+		return nil, err
+	}
+	if err := readJSON("config.json", &p.Config); err != nil {
+		return nil, err
+	}
+	return p, nil
 }
 
 func download(url string, dst string) error {
@@ -89,7 +96,7 @@ func download(url string, dst string) error {
 		return err
 	}
 	defer res.Body.Close()
-	file, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, 0x666)
+	file, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		return err
 	}
