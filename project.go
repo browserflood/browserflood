@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -15,42 +14,61 @@ const (
 )
 
 type Project struct {
-	Hosts []*Host
+	Config   Config
+	Provider Provider
+	Hosts    []*Host
+}
+
+type Provider struct {
+	Id     string
+	Secret string
+}
+
+func (p *Project) Save() error {
+	if err := writeJSON("provider.json", p.Provider); err != nil {
+		return err
+	}
+	if err := writeJSON("config.json", p.Config); err != nil {
+		return err
+	}
+	if err := writeJSON("hosts.json", p.Hosts); err != nil {
+		return err
+	}
+	return nil
+}
+
+type Config struct {
+	DeployPath string
+}
+
+func DefaultConfig() Config {
+	return Config{
+		DeployPath: "browserflood",
+	}
 }
 
 type Host struct {
+	Id       string
 	HostAddr string
 	SSHUser  string
 	SSHPort  string
 }
 
-func InitProject() error {
-	fmt.Printf("Creating project structure\n")
-	if err := os.Mkdir("deps", 0777); err != nil {
+func NewProject() *Project {
+	return &Project{
+		Config: Config{DeployPath: "browserflood"},
+		Hosts:  []*Host{},
+	}
+}
+
+func writeJSON(path string, data interface{}) error {
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+	if err != nil {
 		return err
 	}
-	if err := os.Mkdir("deps/32bit", 0777); err != nil {
-		return err
-	}
-	if err := os.Mkdir("deps/64bit", 0777); err != nil {
-		return err
-	}
-	if _, err := os.OpenFile("provider.json", os.O_CREATE, 0666); err != nil {
-		return err
-	}
-	if _, err := os.OpenFile("hosts.json", os.O_CREATE, 0666); err != nil {
-		return err
-	}
-	fmt.Printf("Downloading phantomjs %s (32bit)\n", phantomVersion)
-	if err := download(phantom32URL, "deps/32bit/phantomjs"); err != nil {
-		return err
-	}
-	fmt.Printf("Downloading phantomjs %s (64bit)\n", phantomVersion)
-	if err := download(phantom64URL, "deps/64bit/phantomjs"); err != nil {
-		return err
-	}
-	fmt.Printf("Done\n")
-	return nil
+	defer file.Close()
+	e := json.NewEncoder(file)
+	return e.Encode(data)
 }
 
 func LoadProject() (*Project, error) {
