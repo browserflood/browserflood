@@ -21,6 +21,7 @@ func spawnCmd() error {
 	account := &identity.Account{Id: p.Provider.Id, Key: p.Provider.Secret}
 	s := c.GetServers("digitalocean", account)
 	n := 1
+	p.Hosts = make([]*Host, 0)
 	for i := 0; i < n; i++ {
 		result, err := s.Create(s.New(c.Map{
 			"name":        fmt.Sprintf("browserflood-%d", i),
@@ -32,7 +33,16 @@ func spawnCmd() error {
 		if err != nil {
 			return errors.New(fmt.Sprintf("Provider %s", err))
 		}
-		fmt.Printf("%s", result)
+		server, err := s.Show(result)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Get %s", err))
+		}
+		ips := server.Ips("public")
+		p.Hosts = append(p.Hosts, &Host{
+			Id: server.Id(), Host: ips[0], User: "root", Arch: "amd64", OS: "linux",
+		})
+		fmt.Printf("%s\n", server)
 	}
+	p.Save()
 	return nil
 }
