@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	c "github.com/gcloud/compute"
@@ -21,7 +22,7 @@ func destroyCmd() error {
 	s := c.GetServers("digitalocean", account)
 	n, err := s.Destroy(s.New(c.Map{"id": "1533067"}))
 	if err != nil {
-		return err
+		return errors.New(fmt.Sprintf("Provider %s", err))
 	}
 	fmt.Printf("%#v", n)
 	return nil

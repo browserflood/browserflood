@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	c "github.com/gcloud/compute"
@@ -22,14 +23,14 @@ func spawnCmd() error {
 	n := 1
 	for i := 0; i < n; i++ {
 		result, err := s.Create(s.New(c.Map{
-			"name":      fmt.Sprintf("browserflood-%d", i),
-			"image_id":  3101045,
-			"size_id":   66,
-			"region_id": 1,
-			"ssh_keys":  18420,
+			"name":        fmt.Sprintf("browserflood-%d", i),
+			"image_id":    3101045,
+			"size_id":     66,
+			"region_id":   1,
+			"ssh_key_ids": 18420,
 		}))
 		if err != nil {
-			return err
+			return errors.New(fmt.Sprintf("Provider %s", err))
 		}
 		fmt.Printf("%s", result)
 	}

@@ -84,5 +84,8 @@ func LoadProject() (*Project, error) {
 	if err := readJSON("config.json", &p.Config); err != nil {
 		return nil, err
 	}
+	if err := readJSON("provider.json", &p.Provider); err != nil {
+		return nil, err
+	}
 	return p, nil
 }
