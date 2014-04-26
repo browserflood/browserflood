@@ -2,14 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"io"
-	"net/http"
 	"os"
-)
-
-const (
-	phantomVersion = "1.9.7"
-	phantomURL     = "https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-" + phantomVersion + "-linux-i686.tar.bz2"
 )
 
 type Project struct {
@@ -42,7 +35,7 @@ type Config struct {
 
 type Host struct {
 	Id   string
-	Addr string
+	Host string
 	User string
 }
 
@@ -82,21 +75,4 @@ func LoadProject() (*Project, error) {
 		return nil, err
 	}
 	return p, nil
-}
-
-func download(url string, dst string) error {
-	res, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer res.Body.Close()
-	file, err := os.OpenFile(dst, os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	if _, err := io.Copy(file, res.Body); err != nil {
-		return err
-	}
-	return nil
 }

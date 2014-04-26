@@ -9,6 +9,6 @@ func init() {
 }
 
 func runCmd() error {
-	fmt.Printf("Run\n")
+	fmt.Printf("todo\n")
 	return nil
 }

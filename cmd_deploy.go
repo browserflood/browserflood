@@ -15,6 +15,7 @@ func deployCmd() error {
 	if err != nil {
 		return err
 	}
+	fmt.Printf("Deploying to %d host(s)\n", len(project.Hosts))
 	results := make(chan error, len(project.Hosts))
 	for _, host := range project.Hosts {
 		go func() {
@@ -30,7 +31,7 @@ func deployCmd() error {
 }
 
 func deploy(config Config, host *Host) error {
-	dst := fmt.Sprintf("%s@%s:%s", host.User, host.Addr, config.DeployPath)
+	dst := fmt.Sprintf("%s@%s:%s", host.User, host.Host, config.DeployPath)
 	rsync := exec.Command("rsync", "-e", "ssh", "-rz", "dist/", dst)
 	rsync.Stderr = os.Stderr
 	return rsync.Run()
