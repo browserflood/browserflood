@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"runtime"
 )
 
 type Project struct {
@@ -34,15 +35,24 @@ type Config struct {
 }
 
 type Host struct {
-	Id   string
-	Host string
-	User string
+	Id   string // provider specific
+	Host string // e.g. localhost
+	User string // e.g. root
+	Arch string // e.g. amd64, x86, etc.
+	OS   string // e.g. linux, darwin, etc.
 }
 
 func NewProject() *Project {
 	return &Project{
 		Config: Config{DeployPath: "browserflood"},
-		Hosts:  []*Host{},
+		Hosts: []*Host{
+			{
+				Host: "localhost",
+				User: os.Getenv("USER"),
+				Arch: runtime.GOARCH,
+				OS:   runtime.GOOS,
+			},
+		},
 	}
 }
 

@@ -6,6 +6,7 @@ import (
 )
 
 var (
+	// public commands, internal ones are special cased in switch below
 	commands = make(map[string]func() error, 0)
 	usage    = make(map[string]string, 0)
 )
@@ -15,9 +16,16 @@ func main() {
 		help()
 		os.Exit(0)
 	}
-	cmd, ok := commands[os.Args[1]]
-	if !ok {
-		fatal("Unknown command: %s", cmd)
+	var cmd func() error
+	switch cmdName := os.Args[1]; cmdName {
+	case "slave":
+		cmd = slaveCmd
+	default:
+		var ok bool
+		cmd, ok = commands[cmdName]
+		if !ok {
+			fatal("Unknown command: %s", cmd)
+		}
 	}
 	if err := cmd(); err != nil {
 		fatal("%s", err)
