@@ -2,17 +2,20 @@ package main
 
 import (
 	"archive/zip"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
+	"net/rpc"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 const (
-	browserFloodPKG  = "github.com/browserflood/browserflood"
+	browserFloodPkg  = "github.com/browserflood/browserflood"
 	phantomVersion   = "1.9.7"
 	phantomDarwinURL = "https://bitbucket.org/ariya/phantomjs/downloads/phantomjs-%s-macosx.zip"
 )
@@ -22,6 +25,21 @@ func init() {
 }
 
 func runCmd() error {
+	var c int
+	var t time.Duration
+	set := &flag.FlagSet{}
+	set.IntVar(&c, "c", 0, "")
+	set.DurationVar(&t, "t", 0, "")
+	if err := set.Parse(os.Args[2:]); err != nil {
+		return err
+	}
+	if c == 0 {
+		return fmt.Errorf("Missing -c argument.")
+	}
+	if t == 0 {
+		return fmt.Errorf("Missing -t argument.")
+	}
+
 	p, err := LoadProject()
 	if err != nil {
 		return err
@@ -52,7 +70,112 @@ func runCmd() error {
 			return err
 		}
 	}
+	fmt.Printf("Connecting to %d hosts\n", len(p.Hosts))
+	errCh := make(chan error, len(p.Hosts))
+	hostCh := make(chan *remoteHost, len(p.Hosts))
+	for _, host := range p.Hosts {
+		go func() {
+			if remote, err := dialHost(p, host); err != nil {
+				errCh <- err
+			} else {
+				hostCh <- remote
+			}
+		}()
+	}
+	hosts := make([]*remoteHost, 0, len(p.Hosts))
+	for _ = range p.Hosts {
+		select {
+		case err := <-errCh:
+			return err
+		case host := <-hostCh:
+			hosts = append(hosts, host)
+		}
+	}
+	fmt.Printf("Simulating %d users for %s\n", c, t)
 	return nil
+}
+
+func dialHost(p *Project, host *Host) (*remoteHost, error) {
+	remote := &remoteHost{HeartbeatError: make(chan error, 1)}
+	sshAddr := fmt.Sprintf("%s@%s", host.User, host.Host)
+	remote.ssh = exec.Command("ssh", sshAddr, "cd "+p.Config.DeployPath+" && ./browserflood slave")
+	remote.ssh.Stderr = os.Stderr
+	conn, err := newCmdConn(remote.ssh)
+	if err != nil {
+		return nil, err
+	}
+	remote.rpc = rpc.NewClient(conn)
+	if err := remote.ssh.Start(); err != nil {
+		return nil, err
+	}
+	// Send a heartbeat to verify the connection is working
+	if err := remote.Heartbeat(); err != nil {
+		return nil, err
+	}
+	go remote.sendHeartbeats()
+	return remote, nil
+}
+
+type remoteHost struct {
+	HeartbeatError chan error
+	rpc            *rpc.Client
+	ssh            *exec.Cmd
+}
+
+func (r *remoteHost) Heartbeat() error {
+	call := r.rpc.Go("Slave.Heartbeat", &struct{}{}, &struct{}{}, nil)
+	select {
+	case <-call.Done:
+		return nil
+	case <-time.After(heartbeatTimeout):
+		return heartbeatTimeoutError(heartbeatTimeout)
+	}
+}
+
+func (r *remoteHost) sendHeartbeats() {
+	for {
+		select {
+		case <-time.After(time.Second):
+			if err := r.Heartbeat(); err != nil {
+				r.HeartbeatError <- err
+			}
+		}
+	}
+}
+
+func newCmdConn(cmd *exec.Cmd) (*cmdConn, error) {
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, err
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, err
+	}
+	return &cmdConn{
+		cmd:    cmd,
+		stdin:  stdin,
+		stdout: stdout,
+	}, nil
+}
+
+type cmdConn struct {
+	cmd    *exec.Cmd
+	stdin  io.WriteCloser
+	stdout io.ReadCloser
+}
+
+func (c *cmdConn) Read(buf []byte) (int, error) {
+	return c.stdout.Read(buf)
+}
+
+func (c *cmdConn) Write(buf []byte) (int, error) {
+	return c.stdin.Write(buf)
+}
+
+func (c *cmdConn) Close() error {
+	c.cmd.Process.Kill()
+	return c.cmd.Wait()
 }
 
 func deploy(p *Project, host *Host) error {
@@ -76,7 +199,7 @@ func crossCompileBrowserflood(t target) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}
-	build := exec.Command("go", "build", "-o", path, browserFloodPKG)
+	build := exec.Command("go", "build", "-o", path, browserFloodPkg)
 	build.Env = append(os.Environ(), "GOOS="+t.OS, "GOARCH="+t.Arch)
 	build.Stderr = os.Stderr
 	return build.Run()

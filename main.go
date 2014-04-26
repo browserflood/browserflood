@@ -24,7 +24,7 @@ func main() {
 		var ok bool
 		cmd, ok = commands[cmdName]
 		if !ok {
-			fatal("Unknown command: %s", cmd)
+			fatal("Unknown command: %s", cmdName)
 		}
 	}
 	if err := cmd(); err != nil {
