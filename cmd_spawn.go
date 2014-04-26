@@ -26,10 +26,10 @@ func spawnCmd() error {
 		fmt.Println("Spawning server.")
 		result, err := s.Create(s.New(c.Map{
 			"name":        fmt.Sprintf("browserflood-%d", i),
-			"image_id":    3101045,
-			"size_id":     66,
-			"region_id":   1,
-			"ssh_key_ids": 18420,
+			"image_id":    p.Provider.Image_id,
+			"size_id":     p.Provider.Size_id,
+			"region_id":   p.Provider.Region_id,
+			"ssh_key_ids": p.Provider.Ssh_key_ids,
 		}))
 		if err != nil {
 			return errors.New(fmt.Sprintf("Provider %s", err))

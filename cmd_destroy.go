@@ -29,7 +29,7 @@ func destroyCmd() error {
 			return errors.New(fmt.Sprintf("Provider %s", err))
 		}
 		if n {
-			fmt.Printf("%s destroyed.", server.Id())
+			fmt.Printf("Host %s destroyed.\n", server.Id())
 		}
 	}
 	return nil
