@@ -59,10 +59,10 @@ func spawnCmd() error {
 func spawn(s c.Servers, i int, p *Project) (*Host, error) {
 	result, err := s.Create(s.New(c.Map{
 		"name":        fmt.Sprintf("browserflood-%d", i),
-		"image_id":    p.Provider.Image_id,
-		"size_id":     p.Provider.Size_id,
-		"region_id":   p.Provider.Region_id,
-		"ssh_key_ids": p.Provider.Ssh_key_ids,
+		"image_id":    p.Provider.ImageId,
+		"size_id":     p.Provider.SizeId,
+		"region_id":   p.Provider.RegionId,
+		"ssh_key_ids": p.Provider.SshKeyIds,
 	}))
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("Provider %s", err))

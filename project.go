@@ -13,12 +13,12 @@ type Project struct {
 }
 
 type Provider struct {
-	Id          string
-	Secret      string
-	Image_id    int
-	Size_id     int
-	Region_id   int
-	Ssh_key_ids string
+	Id        string
+	Secret    string
+	ImageId   int
+	SizeId    int
+	RegionId  int
+	SshKeyIds string
 }
 
 func (p *Project) Save() error {
@@ -50,9 +50,9 @@ func NewProject() *Project {
 	return &Project{
 		Config: Config{DeployPath: "browserflood"},
 		Provider: Provider{
-			Image_id:  3101045,
-			Region_id: 1,
-			Size_id:   66,
+			ImageId:  3101045,
+			RegionId: 1,
+			SizeId:   66,
 		},
 		Hosts: []*Host{
 			{
