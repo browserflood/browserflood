@@ -13,9 +13,13 @@ func init() {
 }
 
 func destroyCmd() error {
-	account := &identity.Account{}
-	s := c.Servers{account, "digitalocean"}
-	n, err := s.Destroy("1533067")
+	p, err := LoadProject()
+	if err != nil {
+		return err
+	}
+	account := &identity.Account{Id: p.Provider.Id, Key: p.Provider.Secret}
+	s := c.GetServers("digitalocean", account)
+	n, err := s.Destroy(s.New(c.Map{"id": "1533067"}))
 	if err != nil {
 		return err
 	}
