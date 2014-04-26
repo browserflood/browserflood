@@ -23,6 +23,7 @@ func spawnCmd() error {
 	n := 1
 	p.Hosts = make([]*Host, 0)
 	for i := 0; i < n; i++ {
+		fmt.Println("Spawning server.")
 		result, err := s.Create(s.New(c.Map{
 			"name":        fmt.Sprintf("browserflood-%d", i),
 			"image_id":    3101045,
@@ -44,5 +45,6 @@ func spawnCmd() error {
 		fmt.Printf("%s\n", server)
 	}
 	p.Save()
+	fmt.Println("hosts.json saved.")
 	return nil
 }
