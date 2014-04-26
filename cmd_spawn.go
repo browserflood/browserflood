@@ -3,6 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
+	"strconv"
 
 	c "github.com/gcloud/compute"
 	_ "github.com/gcloud/compute/providers/digitalocean"
@@ -14,37 +16,64 @@ func init() {
 }
 
 func spawnCmd() error {
+	if len(os.Args[2:]) < 1 {
+		return errors.New("Specify the number of servers to spawn.")
+	}
 	p, err := LoadProject()
 	if err != nil {
 		return err
 	}
+	n, _ := strconv.ParseInt(os.Args[2:][0], 0, 64)
 	account := &identity.Account{Id: p.Provider.Id, Key: p.Provider.Secret}
 	s := c.GetServers("digitalocean", account)
-	n := 1
 	p.Hosts = make([]*Host, 0)
-	for i := 0; i < n; i++ {
-		fmt.Println("Spawning server.")
-		result, err := s.Create(s.New(c.Map{
-			"name":        fmt.Sprintf("browserflood-%d", i),
-			"image_id":    p.Provider.Image_id,
-			"size_id":     p.Provider.Size_id,
-			"region_id":   p.Provider.Region_id,
-			"ssh_key_ids": p.Provider.Ssh_key_ids,
-		}))
-		if err != nil {
-			return errors.New(fmt.Sprintf("Provider %s", err))
-		}
-		server, err := s.Show(result)
-		if err != nil {
-			return errors.New(fmt.Sprintf("Get %s", err))
-		}
-		ips := server.Ips("public")
-		p.Hosts = append(p.Hosts, &Host{
-			Id: server.Id(), Host: ips[0], User: "root", Arch: "amd64", OS: "linux",
-		})
-		fmt.Printf("%s\n", server)
+	allerrors := make([]error, 0)
+	results := make(chan *Host, n)
+	errs := make(chan error, n)
+	fmt.Printf("Spawning %d servers.\n", n)
+	for i := 0; i < int(n); i++ {
+		go func() {
+			r, e := spawn(s, i, p)
+			results <- r
+			errs <- e
+		}()
 	}
-	p.Save()
-	fmt.Println("hosts.json saved.")
+	for i := 0; i < int(n); i++ {
+		if err := <-errs; err != nil {
+			allerrors = append(allerrors, err)
+		}
+		if host := <-results; host != nil {
+			p.Hosts = append(p.Hosts, host)
+		}
+	}
+	if len(p.Hosts) > 0 {
+		p.Save()
+		fmt.Println("hosts.json saved.")
+	}
+	if len(allerrors) > 0 {
+		return errors.New(fmt.Sprintf("%#v", allerrors))
+	}
 	return nil
+}
+
+func spawn(s c.Servers, i int, p *Project) (*Host, error) {
+	result, err := s.Create(s.New(c.Map{
+		"name":        fmt.Sprintf("browserflood-%d", i),
+		"image_id":    p.Provider.Image_id,
+		"size_id":     p.Provider.Size_id,
+		"region_id":   p.Provider.Region_id,
+		"ssh_key_ids": p.Provider.Ssh_key_ids,
+	}))
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Provider %s", err))
+	}
+	server, err := s.Show(result)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Get %s", err))
+	}
+	ips := server.Ips("public")
+	h := &Host{
+		Id: server.Id(), Host: ips[0], User: "root", Arch: "amd64", OS: "linux",
+	}
+	return h, nil
 }
