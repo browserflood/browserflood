@@ -36,6 +36,7 @@ func (p *Project) Save() error {
 
 type Config struct {
 	DeployPath string
+	Cmd        string
 }
 
 type Host struct {
@@ -71,8 +72,12 @@ func writeJSON(path string, data interface{}) error {
 		return err
 	}
 	defer file.Close()
-	e := json.NewEncoder(file)
-	return e.Encode(data)
+	out, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+	_, err = file.Write(out)
+	return err
 }
 
 func readJSON(path string, data interface{}) error {

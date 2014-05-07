@@ -39,16 +39,34 @@ func runCmd() error {
 	if t == 0 {
 		return fmt.Errorf("Missing -t argument.")
 	}
-
 	p, err := LoadProject()
 	if err != nil {
 		return err
 	}
 
+	runId := time.Now().Format("2006-02-01-15-04-05")
+	logDir := filepath.Join("log", runId)
+	latestLogDir := filepath.Join("log", "latest")
+	if err := os.MkdirAll(logDir, 0777); err != nil {
+		return err
+	}
+	absLogDir, err := filepath.Abs(logDir)
+	if err != nil {
+		return err
+	}
+	if err := os.Symlink(absLogDir, latestLogDir); err != nil {
+		return err
+	}
+	errLog, err := openLogFile(filepath.Join(logDir, "error.log"))
+	if err != nil {
+		return err
+	}
+	defer errLog.Close()
+	fmt.Printf("Starting run, see \"%s\"\n", logDir)
+
 	targets := map[target]bool{}
 	for _, host := range p.Hosts {
 		targets[target{Arch: host.Arch, OS: host.OS}] = true
-
 	}
 	for target, _ := range targets {
 		if err := crossCompileBrowserflood(target); err != nil {
@@ -82,23 +100,54 @@ func runCmd() error {
 			}
 		}()
 	}
-	hosts := make([]*remoteHost, 0, len(p.Hosts))
+	remotes := make([]*remoteHost, 0, len(p.Hosts))
 	for _ = range p.Hosts {
 		select {
 		case err := <-errCh:
 			return err
 		case host := <-hostCh:
-			hosts = append(hosts, host)
+			remotes = append(remotes, host)
 		}
 	}
 	fmt.Printf("Simulating %d users for %s\n", c, t)
+	ids := make(chan int)
+	go generateIds(ids)
+	for i := 0; i < c; i++ {
+		remote := remotes[i%len(remotes)]
+		go func() {
+			for {
+				result, err := remote.SimulateUser(p, <-ids, runId)
+				fmt.Printf("result: %#v err: %#v\n", result, err)
+			}
+		}()
+	}
+	doneCh := time.After(t)
+	start := time.Now()
+	for {
+		select {
+		case <-time.After(time.Second):
+			sec := time.Second * time.Duration(int(time.Since(start).Seconds()))
+			fmt.Printf("[%s] %d users, %d errors\n", sec, 0, 0)
+		case <-doneCh:
+			fmt.Printf("Simulation complete\n")
+			return nil
+		}
+	}
 	return nil
+}
+
+func generateIds(ch chan int) {
+	i := 0
+	for {
+		ch <- i
+		i++
+	}
 }
 
 func dialHost(p *Project, host *Host) (*remoteHost, error) {
 	remote := &remoteHost{HeartbeatError: make(chan error, 1)}
 	sshAddr := fmt.Sprintf("%s@%s", host.User, host.Host)
-	remote.ssh = exec.Command("ssh", sshAddr, "cd "+p.Config.DeployPath+" && ./browserflood slave")
+	remote.ssh = exec.Command("ssh", sshAddr, "cd "+p.Config.DeployPath+" && ./bin/browserflood slave")
 	remote.ssh.Stderr = os.Stderr
 	conn, err := newCmdConn(remote.ssh)
 	if err != nil {
@@ -130,6 +179,17 @@ func (r *remoteHost) Heartbeat() error {
 	case <-time.After(heartbeatTimeout):
 		return heartbeatTimeoutError(heartbeatTimeout)
 	}
+}
+
+func (r *remoteHost) SimulateUser(p *Project, userId int, runId string) (*SimulateResult, error) {
+	args := &SimulateArgs{
+		Config: p.Config,
+		RunId:  runId,
+		UserId: userId,
+	}
+	result := &SimulateResult{}
+	err := r.rpc.Call("Slave.SimulateUser", args, result)
+	return result, err
 }
 
 func (r *remoteHost) sendHeartbeats() {
@@ -180,10 +240,20 @@ func (c *cmdConn) Close() error {
 
 func deploy(p *Project, host *Host) error {
 	dst := fmt.Sprintf("%s@%s:%s", host.User, host.Host, p.Config.DeployPath)
-	bin := fmt.Sprintf("bin/%s/%s/", host.OS, host.Arch)
-	rsync := exec.Command("rsync", "-e", "ssh", "-rz", bin, "var/", dst)
-	rsync.Stderr = os.Stderr
-	return rsync.Run()
+	if err := execCmd("rsync", "-e", "ssh", "-rz", "var", dst); err != nil {
+		return err
+	}
+	bin := fmt.Sprintf("bin/%s_%s/", host.OS, host.Arch)
+	return execCmd("rsync", "-e", "ssh", "-rz", bin, dst+"/bin")
+}
+
+func execCmd(name string, args ...string) error {
+	cmd := exec.Command(name, args...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		err = fmt.Errorf("%s: %s", err, out)
+	}
+	return err
 }
 
 type target struct {
@@ -195,7 +265,7 @@ func crossCompileBrowserflood(t target) error {
 	// @TODO Using browserflood should not require having go installed. But for
 	// now this is ok / will allow us to iterate quickly.
 	fmt.Printf("Building browserflood for %s/%s\n", t.OS, t.Arch)
-	path := fmt.Sprintf("bin/%s/%s/browserflood", t.OS, t.Arch)
+	path := fmt.Sprintf("bin/%s_%s/browserflood", t.OS, t.Arch)
 	if err := os.MkdirAll(filepath.Dir(path), 0777); err != nil {
 		return err
 	}
@@ -206,7 +276,7 @@ func crossCompileBrowserflood(t target) error {
 }
 
 func downloadPhantomJS(t target, version string) error {
-	path := fmt.Sprintf("bin/%s/%s/phantomjs", t.OS, t.Arch)
+	path := fmt.Sprintf("bin/%s_%s/phantomjs", t.OS, t.Arch)
 	if _, err := os.Stat(path); err == nil {
 		return nil
 	}

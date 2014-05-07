@@ -33,9 +33,9 @@ func main() {
 }
 
 func help() {
-	fmt.Printf("browserflood <command>\n")
+	fmt.Printf("Usage: browserflood <command> [<args>]\n")
 	fmt.Printf("\n")
-	fmt.Printf("commands:\n")
+	fmt.Printf("Available subcommands:\n")
 	for name, use := range usage {
 		fmt.Printf("  %s %s\n", name, use)
 	}
